@@ -1,31 +1,42 @@
 #include <MIDI.h>
+#include "RegisterSwitch.hh";
 
 // Define Connections to 74HC165
-int load = 7; // PL pin 1
-int clockEnablePin = 4; // CE pin 15
-int dataIn = 5; // Q7 pin 7
-int clockIn = 6; // CP pin 2
+int load = 7;            // PL pin 1
+int clockEnablePin = 4;  // CE pin 15
+int dataIn = 5;          // Q7 pin 7
+int clockIn = 6;         // CP pin 2
 
 // Define Connections to 74HC595
-const int latchPin = 10; // ST_CP pin 12
-const int clockPin = 11; // SH_CP pin 11
-const int dataPin = 12; // DS pin 14
+const int latchPin = 10;  // ST_CP pin 12
+const int clockPin = 11;  // SH_CP pin 11
+const int dataPin = 12;   // DS pin 14
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
-bool leds[8] = {false, false, false, false, false, false, false, false };
-const int ledMap[8] = {1, 2, 3, 4, 5, 6, 7, 0};
+bool leds[8] = { false, false, false, false, false, false, false, false };
+const int ledMap[8] = { 1, 2, 3, 4, 5, 6, 7, 0 };
 
-bool footswitches[8] = {false, false, false, false, false, false, false, false };
-const int footswitchMap[8] = {2, 3, 4, 5, 0, 1, 6, 7};
+bool footswitches[8] = { false, false, false, false, false, false, false, false };
+const int footswitchMap[8] = { 2, 3, 4, 5, 0, 1, 6, 7 };
 
 int lastProgramActive = 0;
 int programActive = 0;
 
+RegisterSwitch switches[8] = {
+  RegisterSwitch(2),
+  RegisterSwitch(3),
+  RegisterSwitch(4),
+  RegisterSwitch(5),
+  RegisterSwitch(0),
+  RegisterSwitch(1),
+  RegisterSwitch(6),
+  RegisterSwitch(7),
 
+};
 
-void setup () {
-  Serial.begin(31250); // MIDI
+void setup() {
+  Serial.begin(31250);  // MIDI
   // Serial.begin(4800); // DEBUG ONLY
 
   // 74HC165 pins
@@ -38,21 +49,32 @@ void setup () {
   pinMode(latchPin, OUTPUT);
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
+
+  for(int i = 0; i < 8; i++) {
+    switches[i].setOnDownCallback(OnPressed);
+  }
+
+  switches[7].setOnLongPressCallback(OnLongPress);
 }
 
-byte BoolArrayToByte(bool boolArray[8])
-{
+byte BoolArrayToByte(bool boolArray[8]) {
   byte result = 0;
 
-  for (int i = 0; i < 8; i++)
-  {
-    if (boolArray[i])
-    {
+  for (int i = 0; i < 8; i++) {
+    if (boolArray[i]) {
       result = result | (1 << i);
     }
   }
 
   return result;
+}
+
+void OnPressed() {
+  Serial.println("buttonPress");
+}
+
+void OnLongPress() {
+Serial.println("LongPress");
 }
 
 void readFootswitches() {
@@ -71,15 +93,8 @@ void readFootswitches() {
   for (int i = 0; i < 8; i++) {
     int state = bitRead(~incomingBytes, i);
     int switchIndex = footswitchMap[i];
-    footswitches[switchIndex] = state;
 
-    if (state == 1) {
-      if (programActive != lastProgramActive) {
-        lastProgramActive = switchIndex;
-      }
-
-      programActive = switchIndex;
-    }
+    switches[i].Poll(state);
   }
 }
 
@@ -114,7 +129,6 @@ void midiProgramChange() {
   if (programActive != lastProgramActive) {
     MIDI.sendProgramChange(programActive, 1);
   }
-
 }
 
 void loop() {
@@ -122,38 +136,3 @@ void loop() {
   setLedState();
   midiProgramChange();
 }
-
-/*
-  void oldLoop() {
-
-  // Read Switches
-
-  // Write pulse to load pin
-  digitalWrite(load, LOW);
-  delayMicroseconds(5);
-  digitalWrite(load, HIGH);
-  delayMicroseconds(5);
-
-  // Get data from 74HC165
-  digitalWrite(clockIn, HIGH);
-  digitalWrite(clockEnablePin, LOW);
-  byte incoming = shiftIn(dataIn, clockIn, LSBFIRST);
-  digitalWrite(clockEnablePin, HIGH);
-
-  MIDI.sendNoteOn(~incoming, 127, 1);
-
-  // Write to LEDs
-
-  // ST_CP LOW to keep LEDs from changing while reading serial data
-  digitalWrite(latchPin, LOW);
-
-  // Shift out the bits
-  shiftOut(dataPin, clockPin, LSBFIRST, ~incoming);
-
-  // ST_CP HIGH change LEDs
-  digitalWrite(latchPin, HIGH);
-
-  delay(500);
-
-  }
-*/
