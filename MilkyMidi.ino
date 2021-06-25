@@ -12,6 +12,9 @@ const int latchPin = 10;  // ST_CP pin 12
 const int clockPin = 11;  // SH_CP pin 11
 const int dataPin = 12;   // DS pin 14
 
+bool bankShift = false;
+
+
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 bool leds[8] = { false, false, false, false, false, false, false, false };
@@ -36,8 +39,8 @@ RegisterSwitch switches[8] = {
 };
 
 void setup() {
-  Serial.begin(31250);  // MIDI
-  // Serial.begin(4800); // DEBUG ONLY
+  // Serial.begin(31250);  // MIDI
+  Serial.begin(4800);  // DEBUG ONLY
 
   // 74HC165 pins
   pinMode(load, OUTPUT);
@@ -50,11 +53,11 @@ void setup() {
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
 
-  for(int i = 0; i < 8; i++) {
+  for (int i = 0; i < 8; i++) {
     switches[i].setOnDownCallback(OnPressed);
   }
 
-  switches[7].setOnLongPressCallback(OnLongPress);
+  switches[1].setOnLongPressCallback(OnLongPress);
 }
 
 byte BoolArrayToByte(bool boolArray[8]) {
@@ -69,12 +72,31 @@ byte BoolArrayToByte(bool boolArray[8]) {
   return result;
 }
 
-void OnPressed() {
-  Serial.println("buttonPress");
+void OnPressed(RegisterSwitchData data) {
+  Serial.println("---buttonPressed---");
+  Serial.print("shiftIndex: ");
+  Serial.print(data.shiftIndex);
+  Serial.print(", elapsedTime: ");
+  Serial.print(data.elapsedTime);
+  Serial.print(", state: ");
+  Serial.print(data.state);
+  Serial.println("");
+
+
+  for (int i = 0; i < 8; i++) {
+    if (footswitchMap[i] == i) {
+
+      Serial.println(footswitchMap[i]);
+      // programActive = i;
+      // if (bankShift) {
+        // programActive = i + 6;
+      // }
+    }
+  }
 }
 
-void OnLongPress() {
-Serial.println("LongPress");
+void OnLongPress(RegisterSwitchData data) {
+  bankShift = !bankShift;
 }
 
 void readFootswitches() {
@@ -91,10 +113,8 @@ void readFootswitches() {
   digitalWrite(clockEnablePin, HIGH);
 
   for (int i = 0; i < 8; i++) {
-    int state = bitRead(~incomingBytes, i);
-    int switchIndex = footswitchMap[i];
-
-    switches[i].Poll(state);
+    // int state = bitRead(~incomingBytes, i);
+    switches[i].Poll(~incomingBytes);
   }
 }
 
@@ -104,6 +124,10 @@ void setLedState() {
   //ledState = ledState << 1;
   byte ledState = B00000000;
   bitSet(ledState, programActive + 1);
+
+  if (bankShift) {
+    bitSet(ledState, 6);
+  }
 
   // ST_CP LOW to keep LEDs from changing while reading serial data
   digitalWrite(latchPin, LOW);
@@ -134,5 +158,5 @@ void midiProgramChange() {
 void loop() {
   readFootswitches();
   setLedState();
-  midiProgramChange();
+  // midiProgramChange();
 }

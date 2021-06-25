@@ -10,17 +10,22 @@ void RegisterSwitch::Poll(byte state) {
   data.state = currentSwitchState;
   data.elapsedTime = elapsedTime;
 
-  if(currentSwitchState && stateChanged) {
+
+  if(currentSwitchState && stateChanged && currentSwitchState) {
     presseDownTimestamp = millis();
 
     if(onPressCallback) {
       (*onPressCallback)(data); 
+
     }
   } 
 
 
-  if(currentSwitchState && elapsedTime > longPressTimeTreshold) {
+  if(!previousHoldState && currentSwitchState && (elapsedTime > longPressTimeTreshold)) {
+    previousHoldState = true;
     if(onLongPressCallback) (*onLongPressCallback)(data); 
+  } else {
+    previousHoldState = false;
   }
   
 

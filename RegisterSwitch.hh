@@ -44,6 +44,7 @@ public:
 private:
   int nShiftIndex;
   bool previousSwitchState = false;
+  bool previousHoldState = false;
   unsigned long presseDownTimestamp;
   int longPressTimeTreshold;
 
