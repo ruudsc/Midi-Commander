@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 #include "Button.h"
-#include "MilkyMidiTypes.h"
+#include "MilkyMidiTypes.hpp"
 #include <Arduino_DebugUtils.h>
 
 class ButtonController
@@ -15,7 +15,7 @@ public:
 
   ~ButtonController() {}
 
-  void Setup(Button<> buttons[])
+  void Setup(Button buttons[])
   {
     for (int i = 0; i < FOOTSWITCH_COUNT; i++)
     {
@@ -31,7 +31,6 @@ public:
 
   void Poll()
   {
-
 
     byte buttonStates = this->ReadShiftRegister();
 
@@ -50,7 +49,7 @@ private:
   const int dataIn = 5;         // Q7 pin 7
   const int clockIn = 6;        // CP pin 2
 
-  Button<> *buttons[FOOTSWITCH_COUNT];
+  Button *buttons[FOOTSWITCH_COUNT];
 
   byte ReadShiftRegister()
   {

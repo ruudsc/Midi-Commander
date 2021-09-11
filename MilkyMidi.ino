@@ -1,6 +1,6 @@
 #include "config.h"
 #include <MIDI.h>
-#include "MilkyMidiTypes.h"
+#include "MilkyMidiTypes.hpp"
 #include "LedController.h"
 #include "PresetController.hpp"
 #include "LooperController.hpp"
@@ -8,24 +8,24 @@
 #include "ProgramManager.hpp"
 #include "EffectController.hpp"
 #include "Button.h"
+#include <Callback.h>
 
-
-Button<ButtonPayload> buttons[FOOTSWITCH_COUNT] = {
-    Button<ButtonPayload>({index : 0, shiftRegisterIndex : 4}),
-    Button<ButtonPayload>({index : 1, shiftRegisterIndex : 5}),
-    Button<ButtonPayload>({index : 2, shiftRegisterIndex : 0}),
-    Button<ButtonPayload>({index : 3, shiftRegisterIndex : 1}),
-    Button<ButtonPayload>({index : 4, shiftRegisterIndex : 2}),
-    Button<ButtonPayload>({index : 5, shiftRegisterIndex : 3}),
+Button buttons[FOOTSWITCH_COUNT] = {
+    Button(2, 0),
+    Button(3, 1),
+    Button(4, 2),
+    Button(5, 3),
+    Button(0, 4),
+    Button(1, 5),
 };
 
 MIDI_CREATE_DEFAULT_INSTANCE();
 
 LedController ledController = LedController();
-LooperController looperController = LooperController(&MIDI, MIDI_CHANNEL);
-PresetController presetController = PresetController(&MIDI, BANK_SIZE, MIDI_CHANNEL);
+LooperController looperController = LooperController(&MIDI, MIDI_CHANNEL, &ledController.ledSignal);
+PresetController presetController = PresetController(&MIDI, BANK_SIZE, MIDI_CHANNEL, &ledController.ledSignal);
+EffectController effectController = EffectController(&MIDI, MIDI_CHANNEL, &ledController.ledSignal);
 ButtonController buttonController = ButtonController();
-EffectController effectController = EffectController(&MIDI, MIDI_CHANNEL);
 
 ProgramManager programManager = ProgramManager(
     &presetController,
@@ -34,13 +34,15 @@ ProgramManager programManager = ProgramManager(
 
 void setup()
 {
-  Debug.setDebugLevel(DBG_VERBOSE);
-
 #if defined(DEBUG)
   Serial.begin(19200); // DEBUG ONLY
+  Debug.setDebugLevel(DBG_VERBOSE);
+
   Debug.print(DBG_VERBOSE, "Setup");
 #else
   Serial.begin(31250); // MIDI
+  Debug.setDebugLevel(DBG_NONE);
+
 #endif
 
   ledController.Setup();
@@ -50,6 +52,5 @@ void setup()
 
 void loop()
 {
-
   buttonController.Poll();
 }

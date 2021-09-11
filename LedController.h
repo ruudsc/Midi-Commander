@@ -2,11 +2,16 @@
 #define LED_CONTROLLER_H
 
 #include "Arduino.h"
+#include <Callback.h>
 
 class LedController
 {
 public:
-  LedController() {}
+  LedController()
+  {
+    auto writeLedStateSlot = MethodSlot<LedController, byte>(this, &LedController::writeLedState);
+    ledSignal.attach(writeLedStateSlot);
+  }
 
   ~LedController() {}
 
@@ -17,11 +22,16 @@ public:
     pinMode(clockPin, OUTPUT);
     pinMode(dataPin, OUTPUT);
 
-    writeLedState(0);
-}
+    // byte ledState = B01010101;
+    byte ledState = B11111111;
+    writeLedState(ledState);
+  }
 
   void writeLedState(byte leds)
   {
+
+    Debug.print(DBG_VERBOSE, "setting leds: %hhx", leds);
+
     // ST_CP LOW to keep LEDs from changing while reading serial data
     digitalWrite(latchPin, LOW);
     // Shift out the bits
@@ -29,6 +39,8 @@ public:
     // ST_CP HIGH change LEDs
     digitalWrite(latchPin, HIGH);
   }
+
+  Signal<byte> ledSignal;
 
 private:
   // Define Connections to 74HC595

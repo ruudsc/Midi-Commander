@@ -3,7 +3,7 @@
 
 #include "Arduino.h"
 #include <MIDI.h>
-#include "MilkyMidiTypes.h"
+#include "MilkyMidiTypes.hpp"
 
 #define RECORD_OVERDUB 60
 #define PLAY_STOP 61
@@ -12,38 +12,52 @@
 #define FORWARD_REVERSE 65
 #define FULL_HALF_SPEED 66
 
-class LooperController {
+class LooperController
+{
 public:
-  LooperController(MidiInterface *midi, midi::Channel channel = 1) {
+  LooperController(MidiInterface *midi, midi::Channel channel, Signal<byte> *ledSignal)
+  {
     this->midi = midi;
     this->channel = channel;
+    this->ledSignal = ledSignal;
   }
 
-  ~LooperController() {
+  ~LooperController()
+  {
   }
 
-  void handleIncomingLooperCommand(byte buttonIndex) {
-    switch (buttonIndex) {
-      case 0:
-        PlayStop();
-        break;
-      case 1:
-        Record();
-        break;
-      case 2:
-        Overdub();
-        break;
-      case 3:
-        UndoRedo();
-      case 4:
-        ForwardReverse();
-        break;
-      default:
-        break;
+  void onModeEnter()
+  {
+    updateLedState();
+  }
+
+  void handleIncomingLooperCommand(byte buttonIndex)
+  {
+    switch (buttonIndex)
+    {
+    case 0:
+      PlayStop();
+      break;
+    case 1:
+      Record();
+      break;
+    case 2:
+      Overdub();
+      break;
+    case 3:
+      UndoRedo();
+    case 4:
+      ForwardReverse();
+      break;
+    default:
+      break;
     }
+
+    updateLedState();
   }
 
-  void PlayStop() {
+  void PlayStop()
+  {
     if (PlayStopState)
       Play();
     else
@@ -52,56 +66,81 @@ public:
     PlayStopState = !PlayStopState;
   }
 
-  void Play() {
+  void Play()
+  {
     this->midi->sendControlChange(PLAY_STOP, MIDI_HIGH, this->channel);
   }
 
-  void PlayOnce() {
+  void PlayOnce()
+  {
     this->midi->sendControlChange(PLAY_ONCE, MIDI_HIGH, this->channel);
   }
 
-  void Record() {
+  void Record()
+  {
     this->midi->sendControlChange(RECORD_OVERDUB, MIDI_HIGH, this->channel);
   }
 
-  void Overdub() {
+  void Overdub()
+  {
     this->midi->sendControlChange(RECORD_OVERDUB, MIDI_LOW, this->channel);
   }
 
-  void Stop() {
+  void Stop()
+  {
     this->midi->sendControlChange(PLAY_STOP, MIDI_LOW, this->channel);
   }
 
-  void UndoRedo() {
+  void UndoRedo()
+  {
     this->midi->sendControlChange(UNDO_REDO, MIDI_HIGH, this->channel);
   }
 
-  void Forward() {
+  void Forward()
+  {
     this->midi->sendControlChange(FORWARD_REVERSE, MIDI_LOW, this->channel);
   }
 
-  void Reverse() {
+  void Reverse()
+  {
     this->midi->sendControlChange(FORWARD_REVERSE, MIDI_HIGH, this->channel);
   }
 
-  void ForwardReverse() {
+  void ForwardReverse()
+  {
     if (ForwardReverseState)
       Forward();
     else
       Reverse();
   }
 
-  void FullSpeed() {
+  void FullSpeed()
+  {
     this->midi->sendControlChange(FORWARD_REVERSE, MIDI_LOW, this->channel);
   }
 
-  void HalfSpeed() {
+  void HalfSpeed()
+  {
     this->midi->sendControlChange(FORWARD_REVERSE, MIDI_HIGH, this->channel);
+  }
+
+  void updateLedState()
+  {
+    byte ledState = B11111111;
+
+    if (PlayStopState)
+      bitSet(ledState, 1);
+
+    if (ForwardReverseState)
+      bitSet(ledState, 5);
+
+    ledSignal->fire(ledState);
   }
 
 private:
   MidiInterface *midi;
   midi::Channel channel;
+  Signal<byte> *ledSignal;
 
   bool PlayStopState = true;
   bool ForwardReverseState = false;

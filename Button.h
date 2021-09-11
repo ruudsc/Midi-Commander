@@ -1,29 +1,28 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
-#include "MilkyMidiTypes.h"
+#include "MilkyMidiTypes.hpp"
+#include "ButtonEvent.h"
 #include <Arduino_DebugUtils.h>
 #include <Callback.h>
 
-template <typename T = ButtonPayload>
 class Button
 {
 public:
-  Button(T callbackPayload)
+  Button(byte index, byte shiftRegisterIndex)
   {
-    this->callbackPayload = callbackPayload;
+    this->index = index;
+    this->shiftRegisterIndex = shiftRegisterIndex;
 
     Debug.print(DBG_VERBOSE, "Button instance");
   };
 
   ~Button(){};
 
-  Signal<T> buttonDownSignal;
-  Signal<T> buttonUpSignal;
-  Signal<T> buttonPressedCallSignal;
-  Signal<T> buttonHoldSignal;
-
-  T callbackPayload;
+  Signal<ButtonEvent> buttonDownSignal;
+  Signal<ButtonEvent> buttonUpSignal;
+  Signal<ButtonEvent> buttonPressedCallSignal;
+  Signal<ButtonEvent> buttonHoldSignal;
 
   void Update(bool state)
   {
@@ -39,31 +38,52 @@ public:
     // DOWN
     if (debouncedInput && !previousButtonState)
     {
-      this->buttonDownSignal.fire(callbackPayload);
-      Debug.print(DBG_VERBOSE, "DOWN: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
+      ButtonEvent payload = {
+        index : this->index,
+        shiftRegisterIndex : this->shiftRegisterIndex,
+        eventType : ButtonEventType::DOWN
+      };
+
+      this->buttonDownSignal.fire(payload);
       holdEventActive = false;
     }
 
     // UP
     if (!debouncedInput && previousButtonState)
     {
-      this->buttonUpSignal.fire(callbackPayload);
-      Debug.print(DBG_VERBOSE, "UP: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
+      ButtonEvent payload = {
+        index : this->index,
+        shiftRegisterIndex : this->shiftRegisterIndex,
+        eventType : ButtonEventType::UP
+      };
+      this->buttonUpSignal.fire(payload);
+      // Debug.print(DBG_VERBOSE, "UP: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
     }
 
     // PRESSED
     if (!debouncedInput && previousButtonState && (timePassed <= longPressTreshold))
     {
-      this->buttonPressedCallSignal.fire(callbackPayload);
-      Debug.print(DBG_VERBOSE, "PRESS: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
+      ButtonEvent payload = {
+        index : this->index,
+        shiftRegisterIndex : this->shiftRegisterIndex,
+        eventType : ButtonEventType::PRESSED
+      };
+      this->buttonPressedCallSignal.fire(payload);
+      // Debug.print(DBG_VERBOSE, "PRESS: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
     }
 
     // HOLD
     if (debouncedInput && (int)timePassed > 0 && timePassed > this->longPressTreshold && !holdEventActive)
     {
-      this->buttonHoldSignal.fire(callbackPayload);
+      ButtonEvent payload = {
+        index : this->index,
+        shiftRegisterIndex : this->shiftRegisterIndex,
+        eventType : ButtonEventType::HOLD
+      };
+
+      this->buttonHoldSignal.fire(payload);
       holdEventActive = true;
-      Debug.print(DBG_VERBOSE, "HOLD: button: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
+      // Debug.print(DBG_VERBOSE, "HOLD: button: %d, prevState %d, timePassed: %d", debouncedInput, previousButtonState, timePassed);
     }
 
     this->previousButtonState = debouncedInput;
@@ -71,7 +91,7 @@ public:
 
 private:
   unsigned long debounceTreshold = 50;
-  unsigned long prevDebounceTime = 0;
+  unsigned long prevDebounceTime = millis();
 
   unsigned long timeSinceButtonDown = millis();
   unsigned long timeSinceButtonUp = millis();
@@ -81,6 +101,10 @@ private:
   bool debouncedState = false;
   bool previousDebouncedState = false;
   bool holdEventActive = false;
+
+  byte index;
+  ;
+  byte shiftRegisterIndex;
 
   bool Debounce(bool rawState)
   {

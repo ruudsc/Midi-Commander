@@ -9,18 +9,12 @@ using MidiInterface = MIDI_NAMESPACE::MidiInterface<MIDI_NAMESPACE::SerialMIDI<H
 #define MIDI_LOW 0
 #define FOOTSWITCH_COUNT 6
 
-enum SwitchModes
+enum class SwitchModes
 {
   PRESET = 0,
   EFFECTS,
   LOOPER,
   NUMBER_OF_MODES
-};
-
-struct ButtonPayload
-{
-  byte index;
-  byte shiftRegisterIndex;
 };
 
 #endif
